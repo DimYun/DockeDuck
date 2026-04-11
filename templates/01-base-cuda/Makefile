@@ -1,12 +1,14 @@
 # ── config ──────────────────────────────────────────────────────
-IMAGE_NAME   ?= base-python
-TAG          ?= latest
-PKG_MANAGER  ?= uv          # uv | pip | conda
-CUDA_VERSION ?= 12.1.0
-UID          := $(shell id -u)
-GID          := $(shell id -g)
+IMAGE_NAME     ?= dockduck-base
+TAG            ?= latest
+PKG_MANAGER    ?= uv          # uv | pip | conda
+PYTHON_VERSION ?= 3.11.8
+CUDA_VERSION   ?= 12.2.0
 
-# ── targets ─────────────────────────────────────────────────────
+# Capture host user parameters automatically
+UID := $(shell id -u)
+GID := $(shell id -g)
+
 .PHONY: build run shell clean
 
 build:
@@ -14,13 +16,14 @@ build:
 		--build-arg UID=$(UID) \
 		--build-arg GID=$(GID) \
 		--build-arg PKG_MANAGER=$(PKG_MANAGER) \
+		--build-arg PYTHON_VERSION=$(PYTHON_VERSION) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
 		-t $(IMAGE_NAME):$(TAG) .
 
 run:
-	docker run --rm --gpus all \
-		-v $(PWD):/home/appuser/app \
-		$(IMAGE_NAME):$(TAG)
+	docker run --rm -it --gpus all \
+		-v $(PWD):/home/appuser/project \
+		$(IMAGE_NAME):$(TAG) python src/main.py
 
 shell:
 	docker run --rm -it --gpus all \

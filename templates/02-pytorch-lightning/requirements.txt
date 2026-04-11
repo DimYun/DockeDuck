@@ -1,0 +1,5 @@
+torch==2.2.1
+torchvision==0.17.1
+pytorch-lightning==2.2.1
+clearml==1.14.3
+opencv-python-headless==4.9.0.80
