@@ -1,11 +1,11 @@
 # Ubuntu 22.04 with CUDA support
-ARG CUDA_VERSION=12.2.0
-ARG PYTHON_VERSION="3.11.8"
-ARG PKG_MANAGER="uv"
+ARG CUDA_VERSION=12.8.1
 
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 AS base
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu22.04 AS base
 
 # Core arguments for idempotency and permissions
+ARG PYTHON_VERSION="3.11.8"
+ARG PKG_MANAGER="uv"
 ARG USERNAME="appuser"
 ARG UID="1000"
 ARG GID="1000"
@@ -21,9 +21,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update -y && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     curl git make build-essential libssl-dev zlib1g-dev \
+    libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 ninja-build \
     libbz2-dev libreadline-dev libsqlite3-dev wget llvm \
     libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
-    sudo acl rsync p7zip-full libglib2.0-0 libgl1-mesa-glx && \
+    sudo acl rsync p7zip-full libglib2.0-0 libgl1-mesa-glx locales && \
+    locale-gen en_US.UTF-8 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 2. Configure non-root user and /opt directory isolation
@@ -34,14 +36,12 @@ ENV VENV_DIR="${OPT_DIR}/python_venv/initial_venv"
 ENV WORK_DIR="/home/${USERNAME}/app"
 
 RUN groupadd --gid ${GID} ${USERNAME} && \
-    useradd -l -m -s /bin/bash --uid ${UID} --gid ${GID} ${USERNAME} && \
-    echo "${USERNAME} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/${USERNAME} && \
-    chmod 0440 /etc/sudoers.d/${USERNAME}
+    useradd -l -m -s /bin/bash --uid ${UID} --gid ${GID} ${USERNAME}
 
 # Create infrastructure directories in /opt and assign to non-root user
-RUN mkdir -p ${PYENV_ROOT} ${VENV_DIR} ${WORK_DIR} && \
-    chown -R ${USERNAME}:${GID} ${OPT_DIR} ${WORK_DIR} && \
-    chmod -R g+rw ${OPT_DIR} ${WORK_DIR}
+RUN mkdir -p ${VENV_DIR} ${CONDA_DIR} ${WORK_DIR} && \
+    chown -R ${USERNAME}:${GID} /opt ${OPT_DIR} ${WORK_DIR} && \
+    chmod -R g+rw /opt ${OPT_DIR} ${WORK_DIR}
 
 USER ${USERNAME}
 WORKDIR ${WORK_DIR}
@@ -64,7 +64,7 @@ RUN if [ "$PKG_MANAGER" = "conda" ]; then \
         export PATH="${VENV_DIR}/bin:${PATH}" && \
         if [ "$PKG_MANAGER" = "uv" ]; then \
             curl -LsSf https://astral.sh/uv/install.sh | sh && \
-            /home/${USERNAME}/.cargo/bin/uv pip install --system -r requirements.txt; \
+            /home/${USERNAME}/.local/bin/uv pip install -r requirements.txt; \
         else \
             pip install --upgrade pip && \
             pip install -r requirements.txt; \
@@ -72,9 +72,26 @@ RUN if [ "$PKG_MANAGER" = "conda" ]; then \
     fi
 
 # Set path depending on package manager used
-ENV PATH="${CONDA_DIR}/bin:${VENV_DIR}/bin:${PYENV_ROOT}/bin:${PYENV_ROOT}/shims:${PATH}"
+ENV PATH="/home/${USERNAME}/.local/bin:${CONDA_DIR}/bin:${VENV_DIR}/bin:${PYENV_ROOT}/bin:${PYENV_ROOT}/shims:${PATH}"
+ENV VIRTUAL_ENV="${VENV_DIR}"
 
-# Copy the rest of the user project files
+# ==========================================
+# Build tour src environment and copy your files
+# SAM2 as the example
+# ==========================================
+ENV FORCE_CUDA="1" \
+    CUDA_HOME="/usr/local/cuda" \
+    TORCH_CUDA_ARCH_LIST="7.0;7.5;8.0;8.6;8.9;9.0+PTX"
+
+RUN if [ "$PKG_MANAGER" = "uv" ]; then \
+        uv pip install wheel setuptools && \
+#        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 && \
+#        uv pip install git+https://github.com/facebookresearch/sam2.git; \
+    else \
+        pip install wheel setuptools && \
+#        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 && \
+#        pip install git+https://github.com/facebookresearch/sam2.git; \
+    fi
+
 COPY --chown=${USERNAME}:${GID} . ${WORK_DIR}/
-
 CMD ["/bin/bash"]

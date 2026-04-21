@@ -18,3 +18,6 @@ clearml-init:
 	docker run --rm -it \
 		-v $(PWD)/configs:/home/appuser/app/configs \
 		$(IMAGE_NAME):$(TAG) clearml-init
+
+destroy:
+	docker rmi $(IMAGE_NAME) || true

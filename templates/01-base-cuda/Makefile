@@ -22,6 +22,7 @@ build:
 
 run:
 	docker run --rm -it --gpus all \
+		-p 8888:8888 \
 		-v $(PWD):/home/appuser/project \
 		$(IMAGE_NAME):$(TAG) python src/main.py
 
@@ -30,5 +31,5 @@ shell:
 		-v $(PWD):/home/appuser/app \
 		$(IMAGE_NAME):$(TAG) bash
 
-clean:
-	docker rmi $(IMAGE_NAME):$(TAG)
+destroy:
+	docker rmi $(IMAGE_NAME):$(TAG) || true

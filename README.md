@@ -27,6 +27,41 @@ USER ${USERNAME}
 WORKDIR /home/${USERNAME}/app
 ```
 
+## Examples
+
+### 1. Running JupyterLab from the Base CUDA Template
+
+Start a JupyterLab session running completely isolated in the Docker container while accessing your local files:
+
+```bash
+cd templates/01-base-cuda
+make build
+docker run --rm -it --gpus all \
+    -p 8888:8888 \
+    -v $(pwd):/home/appuser/app \
+    dockduck-base:latest \
+    jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --NotebookApp.token='' --NotebookApp.password=''
+```
+
+Access JupyterLab at http://localhost:8888
+
+### 2. Training a PyTorch Lightning Model
+
+```bash
+cd templates/02-pytorch-lightning
+make build
+make train
+```
+
+### 3. Running FastAPI with Hot Reload
+
+```bash
+cd templates/03-fastapi-service
+make build
+make start
+```
+
+
 Note:
 
 * Pass your real UID at build time: `docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g)` to solves the classic "files created inside Docker are owned by root on the host" problem.
@@ -81,3 +116,9 @@ DockDuck/
 │   └── cross-platform.md
 │
 └── Makefile                    # Root-level: list/build all templates
+
+
+# Dependencies
+
+* docker-buildx
+* 
