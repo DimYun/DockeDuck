@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="docs/logo.png" alt="DockDuck Logo" width="200" style="border-radius: 20px;"/>
-  <h1>🦆 DockDuck</h1>
+  <img src="docs/logo.jpg" alt="DockeDuck Logo" width="200" style="border-radius: 20px;"/>
+  <h1>🦆 DockeDuck</h1>
 
   <p><b>Fast, secure, and non-root Docker development environments for Python, ML, and APIs.</b></p>
 
@@ -9,12 +9,6 @@
 </div>
 
 ---
-
-# 🦆 DockeDuck
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://dimyun.space/)
-
 
 **Fast, secure, and non-root Docker development environments for Python, Machine Learning, and API services.**
 
