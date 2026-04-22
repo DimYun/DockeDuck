@@ -16,6 +16,13 @@ Stop fighting permission errors and messy host environments.
 DockeDuck provides battle-tested, copy-pasteable Docker templates that just work.
 
 
+## 🎯 Who is this for?
+
+* **Heads of ML & Engineering Leaders:** Organize your team's workflow into unified, reliable, and repeatable environments. Eliminate the "it works on my machine" bottleneck and ensure every project is instantly ready for easy demos and seamless production deployment.
+* **ML Engineers & Data Scientists:** Stop fighting host-level CUDA versions and package conflicts. Work in isolated, GPU-accelerated sandboxes.
+* **Backend API Developers:** Spin up secure, hot-reloading web services without polluting your host OS.
+
+
 ## 🧠 The Core Philosophy
 
 1. **Docker** handles environment reproducibility.
