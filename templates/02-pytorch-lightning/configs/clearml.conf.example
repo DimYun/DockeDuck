@@ -1,0 +1,9 @@
+api {
+    web_server: "https://app.clear.ml"
+    api_server: "https://api.clear.ml"
+    files_server: "https://files.clear.ml"
+    credentials {
+        "access_key": "YOUR_ACCESS_KEY_HERE"
+        "secret_key": "YOUR_SECRET_KEY_HERE"
+    }
+}
