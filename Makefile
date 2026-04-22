@@ -10,7 +10,7 @@
 
 TEMPLATES := 01-base-cuda 02-pytorch-lightning 03-fastapi-service
 
-.PHONY: list build-all setup-dev lint test
+.PHONY: list build-all setup-dev lint help test
 
 list:
 	@echo "Available templates: $(TEMPLATES)"
@@ -24,9 +24,20 @@ build-all:
 setup-dev:
 	pip install ruff pytest pylint
 
-lint:
-	ruff check templates/
-	pylint templates/*/src/*.py templates/*/app/*.py || true
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-test:
-	pytest tests/
+lint: ## Run linters across all templates
+	@echo "Running ruff..."
+	ruff check templates/
+	@echo "Running pylint..."
+	pylint --disable=import-error templates/*/src/*.py templates/*/app/*.py || true
+
+test: ## Run the automated tests for all templates
+	pytest tests/test_templates.py -v
+
+.PHONY: lint lint-deps
+
+lint-deps: ## Install development dependencies (ruff, pylint)
+	@echo "Installing linters..."
+	pip install -q ruff pylint

@@ -1,3 +1,15 @@
+<div align="center">
+  <img src="docs/logo.png" alt="DockDuck Logo" width="200" style="border-radius: 20px;"/>
+  <h1>🦆 DockDuck</h1>
+
+  <p><b>Fast, secure, and non-root Docker development environments for Python, ML, and APIs.</b></p>
+
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://github.com/dimyun/dockduck/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+</div>
+
+---
+
 # 🦆 DockeDuck
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
