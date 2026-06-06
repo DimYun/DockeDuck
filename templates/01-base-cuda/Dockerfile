@@ -46,15 +46,15 @@ RUN mkdir -p ${VENV_DIR} ${CONDA_DIR} ${WORK_DIR} && \
 USER ${USERNAME}
 WORKDIR ${WORK_DIR}
 
-COPY --chown=${USERNAME}:${GID} requirements.txt .
-
+# 3a. Slow layer: install Python runtime (conda / pyenv+venv / uv).
+#     Cached as long as PYTHON_VERSION and PKG_MANAGER are unchanged.
+#     requirements.txt is NOT copied yet so edits to it never bust this layer.
 RUN if [ "$PKG_MANAGER" = "conda" ]; then \
         wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
         bash ~/miniconda.sh -b -u -p ${CONDA_DIR} && \
         rm ~/miniconda.sh && \
         ${CONDA_DIR}/bin/conda init bash && \
-        ${CONDA_DIR}/bin/conda install -y python=${PYTHON_VERSION} pip && \
-        ${CONDA_DIR}/bin/pip install -r requirements.txt; \
+        ${CONDA_DIR}/bin/conda install -y python=${PYTHON_VERSION} pip; \
     else \
         curl https://pyenv.run | bash && \
         export PATH="${PYENV_ROOT}/bin:${PYENV_ROOT}/shims:${PATH}" && \
@@ -63,12 +63,21 @@ RUN if [ "$PKG_MANAGER" = "conda" ]; then \
         python -m venv ${VENV_DIR} && \
         export PATH="${VENV_DIR}/bin:${PATH}" && \
         if [ "$PKG_MANAGER" = "uv" ]; then \
-            curl -LsSf https://astral.sh/uv/install.sh | sh && \
-            /home/${USERNAME}/.local/bin/uv pip install -r requirements.txt; \
+            curl -LsSf https://astral.sh/uv/install.sh | sh; \
         else \
-            pip install --upgrade pip && \
-            pip install -r requirements.txt; \
+            pip install --upgrade pip; \
         fi \
+    fi
+
+# 3b. Fast layer: install Python packages (~3 min).
+#     Only reruns when requirements.txt actually changes.
+COPY --chown=${USERNAME}:${GID} requirements.txt .
+RUN if [ "$PKG_MANAGER" = "conda" ]; then \
+        ${CONDA_DIR}/bin/pip install -r requirements.txt; \
+    elif [ "$PKG_MANAGER" = "uv" ]; then \
+        /home/${USERNAME}/.local/bin/uv pip install -r requirements.txt; \
+    else \
+        pip install -r requirements.txt; \
     fi
 
 # Set path depending on package manager used
