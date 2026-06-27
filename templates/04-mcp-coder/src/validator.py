@@ -38,14 +38,15 @@ class CodeValidator:
             Path(tmp).unlink(missing_ok=True)
 
     def run_tests(self, source_code: str, test_code: str) -> tuple[bool, str]:
-        # Combine source + tests so no import is needed inside the test file
-        combined = f"{source_code}\n\n{test_code}"
+        # Prepend pytest so tests can use pytest.raises without explicit import
+        combined = f"import pytest\n{source_code}\n\n{test_code}"
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(combined)
             tmp = f.name
         try:
             result = subprocess.run(
-                ["python3", "-m", "pytest", tmp, "-v", "--tb=short", "--no-header"],
+                ["python3", "-m", "pytest", tmp, "-v", "--tb=short", "--no-header",
+                 "-p", "no:cacheprovider"],
                 capture_output=True,
                 text=True,
                 timeout=self.timeout * 2,

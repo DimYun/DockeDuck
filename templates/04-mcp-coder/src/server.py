@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 from mcp.server.fastmcp import FastMCP
 
-from .prompts import file_prompt, fix_prompt, test_prompt
+from .prompts import conditions_to_tests_prompt, file_prompt, fix_prompt, test_prompt
 from .validator import CodeValidator
 from .vlm import CoderClient
 
@@ -88,63 +88,106 @@ async def write_and_fix(
 ) -> str:
     """Generate code from a task spec and fix it until all acceptance tests pass.
 
-    spec        — YAML content returned by write_input_file, or a path to a .yaml file.
-                  Must contain: name, filename, description, tests.
+    spec        — YAML content or path to a .yaml file.
+                  Supports two formats:
+                    conditions: (natural language)  → local model generates tests first, then code
+                    tests:      (pytest functions)   → use directly, skip test generation step
 
-    The ENTIRE generation and fix loop runs offline on the local model — zero
-    additional cloud tokens after this call is dispatched.
+    The ENTIRE loop runs on the local model — zero cloud tokens after dispatch.
 
     Fix loop (repeated up to max_retries):
-      1. Generate (or fix) code
-      2. Check syntax  →  fix on failure
-      3. Run code      →  fix on failure
-      4. Run tests     →  fix on failure  (uses spec tests; auto-generates if empty)
+      1. [Once, before loop] Generate tests from conditions (if conditions: present)
+      2. Generate (or fix) code
+      3. Check syntax  →  fix on failure
+      4. Run code      →  fix on failure
+      5. Run tests     →  fix on failure
 
-    Returns:
-      # DONE after N attempt(s)   — all gates passed
+    Returns on success:
+      # DONE after N attempt(s)
       # file: <filename>
       <code>
 
-      # MAX_RETRIES_REACHED (N)   — gave up; best-effort code follows
+    Returns on failure (structured for Claude rescue):
+      # MAX_RETRIES_REACHED (N)
+      # file: <filename>
+      LAST_CODE:
       <code>
+      GENERATED_TESTS:
+      <tests>
+      LAST_ERROR:
+      <error output>
     """
-    data       = _parse_spec(spec)
+    data        = _parse_spec(spec)
     description = data["description"]
     filename    = data["filename"]
     language    = data.get("language", "python")
+    task_type   = data.get("type", "").strip()
+    conditions  = data.get("conditions", "").strip()
     user_tests  = data.get("tests", "").strip()
     _max        = int(os.getenv("MAX_RETRIES", str(max_retries)))
 
-    code = await coder.generate(file_prompt(description, filename, language, ""), system=_SYSTEM)
+    # Step 1 — generate tests from conditions BEFORE generating code
+    # This ensures the fix loop validates against user intent, not against code the model wrote
+    if not user_tests and conditions and language == "python":
+        user_tests = await coder.generate(
+            conditions_to_tests_prompt(conditions, description, filename), system=_SYSTEM
+        )
 
+    # Step 2 — generate initial implementation (task-type aware few-shot)
+    code = await coder.generate(
+        file_prompt(description, filename, language, "", task_type), system=_SYSTEM
+    )
+
+    # Step 3 — if still no tests (no conditions, no tests supplied), derive border-case
+    # tests ONCE from the initial code and reuse them. Generating them once — instead of
+    # regenerating every fix iteration — keeps the acceptance target stable across retries.
+    if not user_tests and language == "python":
+        user_tests = await coder.generate(test_prompt(code), system=_SYSTEM)
+
+    # Confidence: highest validation gate reached so far.
+    # TESTS PASS=100 · EXEC=67 · SYNTAX=33 · FAIL=0
+    best = 0
+    last_error = ""
     for attempt in range(1, _max + 1):
         # Gate 1 — syntax
         ok, msg = validator.check_syntax(code, language)
         if not ok:
-            code = await coder.generate(fix_prompt(code, f"Syntax error: {msg}", language), system=_SYSTEM)
+            last_error = f"SyntaxError: {msg}"
+            code = await coder.generate(fix_prompt(code, last_error, language), system=_SYSTEM)
             continue
+        best = max(best, 33)
 
         # Gate 2 — execution
         ok, out = validator.run_code(code, language)
         if not ok:
-            code = await coder.generate(fix_prompt(code, f"Runtime error:\n{out}", language), system=_SYSTEM)
+            last_error = f"RuntimeError:\n{out}"
+            code = await coder.generate(fix_prompt(code, last_error, language), system=_SYSTEM)
             continue
+        best = max(best, 67)
 
-        # Gate 3 — tests (Python only)
-        if language == "python":
-            test_code = user_tests or await coder.generate(test_prompt(code), system=_SYSTEM)
-            ok, out = validator.run_tests(code, test_code)
+        # Gate 3 — tests (Python only, when tests are available)
+        if language == "python" and user_tests:
+            ok, out = validator.run_tests(code, user_tests)
             if not ok:
-                code = await coder.generate(
-                    fix_prompt(code, f"Tests failed:\n{out}", language), system=_SYSTEM
-                )
+                last_error = f"Tests failed:\n{out}"
+                code = await coder.generate(fix_prompt(code, last_error, language), system=_SYSTEM)
                 continue
 
-        return f"# DONE after {attempt} attempt(s)\n# file: {filename}\n\n{code}"
+        return (
+            f"# DONE after {attempt} attempt(s)\n"
+            f"# file: {filename}\n"
+            f"# confidence: 100%\n\n{code}"
+        )
 
-    ok, msg = validator.check_syntax(code, language)
-    status = "SYNTAX_OK" if ok else f"SYNTAX_ERROR: {msg}"
-    return f"# MAX_RETRIES_REACHED ({_max})\n# {status}\n# file: {filename}\n\n{code}"
+    # Structured failure — Claude can rescue using LAST_CODE + GENERATED_TESTS + LAST_ERROR
+    return (
+        f"# MAX_RETRIES_REACHED ({_max})\n"
+        f"# file: {filename}\n"
+        f"# confidence: {best}%\n\n"
+        f"LAST_CODE:\n{code}\n\n"
+        f"GENERATED_TESTS:\n{user_tests}\n\n"
+        f"LAST_ERROR:\n{last_error}"
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -172,27 +215,36 @@ async def validate_output_file(
     filename   = data.get("filename", "code.py")
 
     report: list[str] = [f"# Validation: {filename}"]
+    # Confidence: TESTS PASS=100 · EXEC=67 · SYNTAX=33 · FAIL=0
+    confidence = 0
 
     ok, msg = validator.check_syntax(code, language)
     report.append(f"SYNTAX     : {'OK' if ok else 'FAIL — ' + msg}")
     if not ok:
+        report.append(f"# confidence: {confidence}%")
         return "\n".join(report)
+    confidence = 33
 
     ok, out = validator.run_code(code, language)
     report.append(f"EXECUTION  : {'OK' if ok else 'FAIL'}")
     if out.strip():
         report.append(f"  {out.strip()[:300]}")
     if not ok:
+        report.append(f"# confidence: {confidence}%")
         return "\n".join(report)
+    confidence = 67
 
     if language == "python" and user_tests:
         ok, out = validator.run_tests(code, user_tests)
         report.append(f"TESTS      : {'PASS ✓' if ok else 'FAIL ✗'}")
+        if ok:
+            confidence = 100
         if out.strip():
             report.append(out.strip()[:1500])
     else:
         report.append("TESTS      : (no tests in spec)")
 
+    report.append(f"# confidence: {confidence}%")
     return "\n".join(report)
 
 
