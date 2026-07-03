@@ -12,13 +12,13 @@
 
 **Fast, secure, and non-root Docker development environments for Python, Machine Learning, and API services.**
 
-Stop fighting permission errors and messy host environments. 
+Stop fighting permission errors and messy host environments, especially for your projects built with AI.
 DockeDuck provides battle-tested, copy-pasteable Docker templates that just work.
 
 
 ## 💥 Why DockeDuck exists — a true story
 
-I asked Claude to set up my **Arch Linux** workstation and run a heavy test suite in Docker. It
+I asked Claude to propose set up for my **Arch Linux** workstation and run a heavy test suite in Docker. It
 did the job — but somewhere along the way it **changed my `sudo` and user passwords** and left my
 system in a broken state. To make it worse, everything ran as **root inside the container**, so the
 logs and outputs were buried and painful to read, and every file it produced was owned by root — I
@@ -38,6 +38,7 @@ to check the work. This is exactly why the project is useful today, in the age o
 
 ## 🎯 Who is this for?
 
+* **Any vibecoders:** Start your project with secure, feature-rich, and reliable templates. They allow you to not only develop your entire solution but also test it safely and save money with custom, local MCP.
 * **Heads of ML & Engineering Leaders:** Organize your team's workflow into unified, reliable, and repeatable environments. Eliminate the "it works on my machine" bottleneck and ensure every project is instantly ready for easy demos and seamless production deployment.
 * **ML Engineers & Data Scientists:** Stop fighting host-level CUDA versions and package conflicts. Work in isolated, GPU-accelerated sandboxes.
 * **Backend API Developers:** Spin up secure, hot-reloading web services without polluting your host OS.
@@ -52,6 +53,7 @@ to check the work. This is exactly why the project is useful today, in the age o
 
 ## ✨ Key Features
 
+* **Local MCP Servers with vLLM and Ollama:** Host your own MCP server to interface with LLMs like Claude or ChatGPT, cutting costs while enabling direct integration with your preferred IDE.
 * **The One-Liner Scaffold:** `scripts/init_project.sh` is our standout feature. You don't need to fork or clone the whole repo for your daily work. Just run one script to generate a fully isolated project directory anywhere on your machine.
 * **Self-Contained Templates:** Every template is designed to work independently. Copy a template folder directly into your own repository, and you are ready to go.
 * **Zero-Code Package Manager Switch:** Swap between `conda`, `pip` and the blazingly fast `uv` dynamically at build time:
@@ -177,7 +179,7 @@ Run a local coding model inside Docker (non-root, GPU) and expose it as an MCP s
 Describe your task and border cases in plain language. The cloud LLM writes formal tests
 and delegates code generation to the local model. All fix loops run offline — zero cloud tokens for that work.
 
-**Works with Claude, GPT-4o, Gemini, and JetBrains AI.** Fits on a 6 GB GPU.
+**Works with Claude, GPT-4o, Gemini, and JetBrains AI.** Fits on a 6 GB GPU or pure CPU.
 
 Two backends to choose from:
 - **Template 04 — vLLM** ([`templates/04-vllm-mcp-coder/`](templates/04-vllm-mcp-coder/)): AWQ 4-bit models (default `Qwen3-4B-AWQ` — the benchmark's top performer). Best quality-per-VRAM for reliable offline inference.
@@ -509,9 +511,11 @@ DockeDuck/
 │
 ├── docs/                       # Deep-dive documentation
 │   ├── mcp_technology.md       # MCP architecture, design decisions, lessons learned
-│   ├── non-root-explained.md   # Why and how our permission architecture works
-│   ├── uv-vs-pip-benchmarks.md # Build speed comparisons
-│   └── cross-platform.md       # Windows (WSL2) and macOS specific quirks
+│   ├── ide-setup.md            # Connect PyCharm / VS Code to the MCP server
+│   └── logo.jpg
+│
+├── examples/
+│   └── ide/                    # Ready IDE configs + a no-AI MCP client (dockeduck_call.py)
 │
 └── Makefile                    # Root-level Make: build all templates, run experiments
 ```
