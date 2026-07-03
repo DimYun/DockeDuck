@@ -382,7 +382,7 @@ The same tasks were run through Ollama (GGUF Q4). For the coder models the pass 
 (coder:3b → 100% with rescue for $0.0153, vs vLLM's $0.0117) — **engine choice is a latency/ops
 decision, not a quality one.** The context matrix (largest that fits 6 GB, identical for both
 thinking modes) and full per-model numbers are in
-[`experiments/experiments.md`](../experiments/experiments.md) §6.7–6.9.
+[`experiments/experiments.md`](../experiments/experiments.md) §4.2–4.4.
 
 ---
 

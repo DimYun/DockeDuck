@@ -116,7 +116,7 @@ the cache 4× heavier per token, so it OOMs above ~8K while the 3B model comfort
 - Early versions of this benchmark were **wrong** — a broken fix loop and self-graded tests
   once made Claude look like it "failed" an LRU cache. When a benchmark surprises you,
   suspect the harness first. Full story in
-  [`experiments.md` §10.6](experiments.md#106-the-harness-not-the-model-was-the-bottleneck-methodology-fix).
+  [`experiments.md` §5](experiments.md#5-the-harness-not-the-model-was-the-bottleneck).
 
 ---
 
