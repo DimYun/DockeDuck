@@ -60,6 +60,49 @@ Note:
 * You will need `docker-buildx`.
 
 
+## 🗂️ Use cases — the right template for the job
+
+Five self-contained templates. Copy the one you need into your repo, `make build`, and go.
+
+| Template | Best for | Why you'll like it |
+|---|---|---|
+| **01 · base-cuda** | A clean, GPU-accelerated **JupyterLab / Python sandbox** | No more host-CUDA roulette. One reproducible image; notebooks and data are saved to your host, owned by *you*, never by root. |
+| **02 · pytorch-lightning** | **Training deep-learning models** with experiment tracking | Batteries-included DL stack + ClearML/W&B wired up. Isolated deps, GPU ready, `make train` and you're off. |
+| **03 · fastapi-service** | **Building & serving web APIs** | Async FastAPI + Jinja2 with **live hot-reload** — edit on the host, Uvicorn restarts in the container. No host pollution, secure by default. |
+| **04 · vllm-mcp-coder** | A **private, local AI coding assistant** (GPU) | Your code never leaves the machine. Benchmarked to match a cloud model's quality at **~6× lower cost** (see [Benchmarks](#benchmarks)); plugs into PyCharm/VS Code; a `recommend_model` tool auto-tunes it to your GPU. |
+| **05 · ollama-mcp-coder** | The **same coding assistant, but lighter** — runs on **CPU** too | One `docker compose up`, any Ollama tag, hot-swap models live. Great if you don't have (or don't want to dedicate) a GPU. |
+
+Templates 01–03 give you **reproducible dev/train/serve environments**; templates 04–05 turn a
+local LLM into an **offline coding worker** you drive from your IDE — the perfect safe sandbox for
+**vibecoding** (see below).
+
+
+## 🔒 Vibecode safely — non-root by default
+
+"Vibecoding" — letting an AI agent write, run, and iterate on code for you — is fantastic, right
+up until the agent runs something it shouldn't. The safe way to give an LLM a shell is to give it
+a **sandbox it can't escape and can't use to hurt your host**. Every DockeDuck template does exactly
+that:
+
+* **Never root.** The container runs as `appuser`, mapped to *your* UID/GID. A process inside can
+  only touch what you can touch — it **cannot** write system files, `chown` things it doesn't own,
+  or leave root-owned droppings across your host that you then need `sudo` to clean up.
+* **Explicit mounts only.** The agent sees the `app/` folder you mounted and nothing else — not your
+  `~/.ssh`, not your dotfiles, not your credentials.
+* **Reproducible & disposable.** `--rm` containers vanish on exit; rebuild from the Dockerfile any time.
+
+> **Why this matters (a true story).** Before this pattern, I let a coding agent run **as root** in
+> a container that bind-mounted my home directory. Trying to "fix permissions," it recursively
+> re-owned and rewrote files across the host — including account/login files — and I was **locked
+> out of my own user**, needing a rescue shell and a password/permissions reset to get back in. A
+> root process in a container that shares your host paths *is* root on those paths. Run it as a
+> non-root user matched to your UID and the worst an over-eager agent can do is mess up files you
+> already own — recoverable, never catastrophic.
+
+**Bottom line:** point your cloud agent (or the local MCP coder in 04/05) at a DockeDuck container
+and let it go wild — the blast radius stops at the folder you mounted.
+
+
 ## 🚀 Quick Start & Examples
 
 ### 1. Scaffold a New Project (Recommended)
