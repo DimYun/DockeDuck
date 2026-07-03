@@ -467,8 +467,7 @@ templates/05-ollama-mcp-coder/       # Ollama backend (docker compose; native /a
 experiments/
 ├── bench_real.py          # v2 benchmark: local / local+rescue / claude_direct
 ├── custom_task.py         # single-spec runner (thin driver over bench_real)
-├── mcp_experiments.py     # dry token/context estimators
-├── small_context_experiments.py
+├── run_models.sh          # vLLM model sweep · run_thinking_ollama.sh — thinking + Ollama
 ├── Dockerfile             # lightweight: anthropic + httpx + pytest + pyyaml
 ├── tasks/                 # one spec per task type (conditions: + description)
 │   ├── function-example.yaml           # function

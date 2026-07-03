@@ -6,8 +6,6 @@
 #
 # Quick start:
 #   make exp-build                 # build experiment runner image (once)
-#   make exp-dry                   # dry analysis — no GPU, no API key needed
-#
 #   make start-bench               # start MCP+vLLM container (GPU needed)
 #   make wait-ready                # wait until vLLM is ready (~3-10 min first run)
 #   make exp-bench-local           # benchmark local VLM only
@@ -50,8 +48,6 @@ _EXP_RUN = docker run --rm \
         exp-build \
         start-bench stop-bench logs-bench wait-ready health-check \
         start-ollama stop-ollama wait-ollama health-ollama \
-        exp-dry exp-dry-tokens exp-dry-fit exp-dry-validation \
-        exp-live exp-live-whole \
         exp-bench-local exp-bench-cloud exp-bench-rescue exp-bench-full \
         exp-bench-ollama exp-bench-ollama-rescue exp-bench-project \
         exp-custom exp-custom-all exp-try \
@@ -207,34 +203,8 @@ health-ollama: ## Check Ollama + MCP health
 	fi
 
 # =============================================================================
-# Experiments — all run inside the dockeduck-experiments container
-# No pip installs on the host required.
-# =============================================================================
-
-exp-dry: exp-build ## Dry analysis: estimated token savings + context fit (no GPU, no API key)
-	$(_EXP_RUN) python experiments/mcp_experiments.py --mode dry
-	$(_EXP_RUN) python experiments/small_context_experiments.py --mode dry
-
-exp-dry-tokens: exp-build ## Dry: token savings table only
-	$(_EXP_RUN) python experiments/mcp_experiments.py --mode dry --exp tokens
-
-exp-dry-fit: exp-build ## Dry: context window fit matrix only
-	$(_EXP_RUN) python experiments/small_context_experiments.py --mode dry --exp fit
-
-exp-dry-validation: exp-build ## Dry: validation strategy A/B/C comparison only
-	$(_EXP_RUN) python experiments/small_context_experiments.py --mode dry --exp validation
-
-exp-live: exp-build ## Live: chunked generation on local VLM, Strategy B (GPU + container)
-	@$(MAKE) health-check
-	$(_EXP_RUN) python experiments/small_context_experiments.py --mode live --task file   --strategy syntax_per_chunk
-	$(_EXP_RUN) python experiments/small_context_experiments.py --mode live --task module --strategy syntax_per_chunk
-
-exp-live-whole: exp-build ## Live: whole-result validation only, Strategy A (GPU + container)
-	@$(MAKE) health-check
-	$(_EXP_RUN) python experiments/small_context_experiments.py --mode live --task file --strategy whole_only
-
-# =============================================================================
-# Benchmark targets — v2 (user-YAML architecture)
+# Benchmark targets — v2 (user-YAML architecture); run inside the
+# dockeduck-experiments container (no host pip installs).
 #   Flow: conditions → local tests → local code → fix loop → [Claude rescue if needed]
 # =============================================================================
 
@@ -375,84 +345,39 @@ how-to-test: ## Print step-by-step testing guide
 	@echo "  make exp-build                          # build experiment runner image"
 	@echo "  # Edit $(MCP_ENV): add ANTHROPIC_API_KEY=sk-ant-...  (only for cloud phases)"
 	@echo ""
-	@echo "── PHASE 1 — Dry analysis  (no GPU, no API key) ────────────────────"
+	@echo "── PHASE 1 — Local vLLM benchmark  (GPU, no API key, \$$0) ───────────"
 	@echo ""
-	@echo "  make exp-dry"
+	@echo "  make start-bench && make wait-ready   # start container, wait for vLLM (3-10 min)"
+	@echo "  make exp-bench-local                  # → results/bench_local.csv"
 	@echo ""
-	@echo "  Outputs: token savings estimate, context window fit matrix,"
-	@echo "           chunking carry-over cost, validation strategy comparison."
+	@echo "  Read: quality (✓✓✓ tests / ✓✓✗ exec / ✓✗✗ syntax), fix_iters, confidence."
 	@echo ""
-	@echo "── PHASE 2 — Start the container ───────────────────────────────────"
+	@echo "── PHASE 2 — Cloud baseline + rescue comparison  (API key) ─────────"
 	@echo ""
-	@echo "  make start-bench     # starts container, exposes vLLM on port 8001"
-	@echo "  make wait-ready      # polls every 10s until vLLM is ready (3-10 min)"
-	@echo ""
-	@echo "── PHASE 3 — Local VLM benchmark  (GPU, no API key) ────────────────"
-	@echo ""
-	@echo "  make exp-bench-local"
-	@echo "  → experiments/results/bench_local.csv"
-	@echo ""
-	@echo "  What to read: time_s, fix_iters, local_in_tok, quality (✓✓✓ / ✓✓✗ / ✗)"
-	@echo "  Expected: function/class → ✓✓✓ on first try.  module → may fail tests."
-	@echo ""
-	@echo "── PHASE 4 — Cloud baseline  (no GPU, API key required) ────────────"
-	@echo ""
-	@echo "  make exp-bench-cloud"
-	@echo "  → experiments/results/bench_cloud.csv"
-	@echo ""
-	@echo "  What to read: cloud_in_tok, cloud_out_tok, cost_usd per task."
-	@echo "  Expected: Claude passes all tasks.  module ~\$$0.25 per run."
-	@echo ""
-	@echo "── PHASE 5 — Full MCP benchmark  (GPU + API key) ───────────────────"
-	@echo ""
-	@echo "  make exp-bench-full"
+	@echo "  make exp-bench-full     # local_vllm + local_vllm_rescue + claude_direct"
 	@echo "  → experiments/results/bench_full.csv"
 	@echo ""
-	@echo "  Key comparison (claude_mcp vs claude_direct):"
-	@echo "    cloud_out_tok : MCP ≈ 60 tokens   vs Direct = full code × fix_iters"
-	@echo "    cost_usd      : MCP ≈ 90% cheaper for file/module tasks"
-	@echo "    quality       : identical — same local VLM, same fix loop"
+	@echo "  Compare: local_vllm_rescue reaches claude_direct quality for a fraction of the"
+	@echo "  cost — the local fix loop is free; Claude is billed only to rescue a failed task."
 	@echo ""
-	@echo "── PHASE 6 — Custom task with your acceptance tests ─────────────────"
+	@echo "── PHASE 3 — Custom task with your own acceptance tests ────────────"
 	@echo ""
-	@echo "  # Edit or create: experiments/tasks/my_task.yaml (with a conditions: block)"
-	@echo "  # Local model turns conditions → pytest, then generates + fixes code:"
-	@echo "  make exp-custom      TASK_SPEC=experiments/tasks/my_task.yaml"
-	@echo "  make exp-custom-all  TASK_SPEC=experiments/tasks/my_task.yaml"
+	@echo "  # Create experiments/tasks/my_task.yaml with a conditions: (or tests:) block."
+	@echo "  make exp-custom      TASK_SPEC=experiments/tasks/my_task.yaml   # local only"
+	@echo "  make exp-custom-all  TASK_SPEC=experiments/tasks/my_task.yaml   # + rescue + cloud"
 	@echo ""
-	@echo "── PHASE 7 — Live chunking  (GPU needed) ────────────────────────────"
-	@echo ""
-	@echo "  make exp-live        # Strategy B: syntax-check per chunk, tests on merge"
-	@echo "  make exp-live-whole  # Strategy A: validate only the final merged result"
-	@echo ""
-	@echo "── PHASE 8 — Ollama backend (05-ollama-mcp-coder) ──────────────────"
+	@echo "── PHASE 4 — Ollama backend (05-ollama-mcp-coder) ─────────────────"
 	@echo ""
 	@echo "  cp templates/05-ollama-mcp-coder/.env.example templates/05-ollama-mcp-coder/.env"
-	@echo "  make start-ollama    # starts Ollama + MCP via docker compose"
-	@echo "  make wait-ollama     # polls until Ollama is healthy"
-	@echo "  make exp-bench-ollama"
-	@echo "  → experiments/results/bench_ollama.csv"
+	@echo "  make start-ollama && make wait-ollama"
+	@echo "  make exp-bench-ollama                 # → results/bench_ollama.csv"
+	@echo "  # Default qwen2.5-coder:3b; ask the recommend_model MCP tool for your GPU."
 	@echo ""
-	@echo "  Models to try (set OLLAMA_MODEL in .env):"
-	@echo "    qwen2.5-coder:3b  ~2 GB VRAM  ~16K ctx  ← default"
-	@echo "    mistral:3b        ~2 GB VRAM  ~32K ctx"
-	@echo "    qwen2.5-coder:7b  ~4 GB VRAM  ~8K ctx (RTX 4050 tight)"
+	@echo "── Full sweeps (one command each) ──────────────────────────────────"
 	@echo ""
-	@echo "── PHASE 9 — Complex task benchmark ────────────────────────────────"
+	@echo "  bash experiments/run_models.sh          # every vLLM model at its max context"
+	@echo "  bash experiments/run_thinking_ollama.sh # thinking on/off + Ollama models"
 	@echo ""
-	@echo "  # Requires both vLLM (port 8001) and Ollama (port 11434) running."
-	@echo "  make exp-bench-project"
-	@echo "  → experiments/results/bench_project.csv"
-	@echo ""
-	@echo "  Task: project_scaffolder.py — 13 tests, dataclass + file I/O + YAML."
-	@echo "  This task stresses all four backends equally."
-	@echo ""
-	@echo "── INTERPRETING RESULTS ─────────────────────────────────────────────"
-	@echo ""
-	@echo "  Savings > 80%  →  MCP is worth it for this task size"
-	@echo "  fix_iters = 0  →  trivial for the local model"
-	@echo "  fix_iters ≥ 4  →  near model capability limit"
-	@echo "  tests_ok=False →  route to cloud (or use a larger model)"
-	@echo ""
+	@echo "  Details: experiments/RESULTS.md · experiments/experiments.md (§6)."
 	@echo "  All CSVs land in experiments/results/ — open in a spreadsheet."
 	@echo ""
