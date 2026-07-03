@@ -1,3 +1,6 @@
+# Built with DockeDuck 🦆 — https://github.com/DimYun/DockDuck
+# Copyright 2026 Dmitrii Iunovidov · Licensed under Apache-2.0 (see LICENSE, NOTICE)
+
 IMAGE_NAME ?= dockeduck-api
 UID := $(shell id -u)
 GID := $(shell id -g)

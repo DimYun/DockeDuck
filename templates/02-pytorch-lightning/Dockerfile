@@ -1,3 +1,6 @@
+# Built with DockeDuck 🦆 — https://github.com/DimYun/DockDuck
+# Copyright 2026 Dmitrii Iunovidov · Licensed under Apache-2.0 (see LICENSE, NOTICE)
+
 # Inherit from template 01-base-cuda
 FROM dockeduck-base:latest AS trainer
 

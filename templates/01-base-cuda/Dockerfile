@@ -1,3 +1,6 @@
+# Built with DockeDuck 🦆 — https://github.com/DimYun/DockDuck
+# Copyright 2026 Dmitrii Iunovidov · Licensed under Apache-2.0 (see LICENSE, NOTICE)
+
 # Ubuntu 22.04 with CUDA support
 ARG CUDA_VERSION=12.8.1
 

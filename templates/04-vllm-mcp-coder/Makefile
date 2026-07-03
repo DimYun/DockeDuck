@@ -1,3 +1,6 @@
+# Built with DockeDuck 🦆 — https://github.com/DimYun/DockDuck
+# Copyright 2026 Dmitrii Iunovidov · Licensed under Apache-2.0 (see LICENSE, NOTICE)
+
 IMAGE_NAME     ?= dockeduck-mcp-coder
 CONTAINER_NAME ?= dockeduck-mcp-coder
 MCP_PORT       ?= 8000

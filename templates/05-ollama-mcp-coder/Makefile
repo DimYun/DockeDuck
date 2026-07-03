@@ -1,3 +1,6 @@
+# Built with DockeDuck 🦆 — https://github.com/DimYun/DockDuck
+# Copyright 2026 Dmitrii Iunovidov · Licensed under Apache-2.0 (see LICENSE, NOTICE)
+
 MCP_PORT    ?= 8000
 OLLAMA_PORT ?= 11434
 UID         := $(shell id -u)

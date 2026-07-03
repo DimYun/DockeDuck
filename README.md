@@ -4,7 +4,7 @@
 
   <p><b>Fast, secure, and non-root Docker development environments for Python, ML, and APIs.</b></p>
 
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0"></a>
   <a href="https://github.com/DimYun/DockDuck/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
 </div>
 
@@ -433,7 +433,8 @@ and scaffolding scripts strictly separated.
 ```plaintext
 DockeDuck/
 ├── README.md                   # Project overview and quick start
-├── LICENSE                     # MIT License
+├── LICENSE                     # Apache License 2.0
+├── NOTICE                      # Attribution carried into forks/copies
 ├── CONTRIBUTING.md             # Guidelines for adding new templates
 ├── .github/                    # CI/CD and Community Health
 │   ├── workflows/
@@ -514,4 +515,22 @@ DockeDuck/
 │
 └── Makefile                    # Root-level Make: build all templates, run experiments
 ```
+
+
+## 📜 License & attribution
+
+DockeDuck is licensed under the **[Apache License 2.0](LICENSE)** — free to use, modify, and ship
+in commercial and closed-source projects. When you redistribute (or fork) it, keep the
+[`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) files; the `NOTICE` carries the attribution forward.
+
+The name **DockeDuck** and the duck logo are marks of the author — the code is yours to build on,
+but please don't rebrand a fork as "DockeDuck."
+
+**Using a template in your project? A shout-out is always appreciated** — drop this badge in your README:
+
+```markdown
+[![Built with DockeDuck](https://img.shields.io/badge/built%20with-DockeDuck%20%F0%9F%A6%86-blue)](https://github.com/DimYun/DockDuck)
+```
+
+Copyright © 2026 Dmitrii Iunovidov.
 
