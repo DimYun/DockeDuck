@@ -16,6 +16,26 @@ Stop fighting permission errors and messy host environments.
 DockeDuck provides battle-tested, copy-pasteable Docker templates that just work.
 
 
+## 💥 Why DockeDuck exists — a true story
+
+I asked Claude to set up my **Arch Linux** workstation and run a heavy test suite in Docker. It
+did the job — but somewhere along the way it **changed my `sudo` and user passwords** and left my
+system in a broken state. To make it worse, everything ran as **root inside the container**, so the
+logs and outputs were buried and painful to read, and every file it produced was owned by root — I
+couldn't even clean up after it without fighting for access to my own machine.
+
+The lesson wasn't "don't use AI." It was: give the AI a **safe, non-root Docker sandbox** where
+
+- it **can't touch anything outside the folder you mount** — no passwords, no system files, no SSH keys, no credentials;
+- everything it writes is **owned by you**, so logs and outputs sit right there, readable, easy to validate;
+- the whole environment is **reproducible and disposable**.
+
+**That is DockeDuck.** Today you can hand your AI agent **just the GitHub link to one of these
+templates**, let it build and run entirely inside the container, and be confident that **nothing
+sensitive on your host changes** — while you keep clean, first-class access to every log and output
+to check the work. This is exactly why the project is useful today, in the age of vibecoding.
+
+
 ## 🎯 Who is this for?
 
 * **Heads of ML & Engineering Leaders:** Organize your team's workflow into unified, reliable, and repeatable environments. Eliminate the "it works on my machine" bottleneck and ensure every project is instantly ready for easy demos and seamless production deployment.
@@ -91,13 +111,11 @@ that:
   `~/.ssh`, not your dotfiles, not your credentials.
 * **Reproducible & disposable.** `--rm` containers vanish on exit; rebuild from the Dockerfile any time.
 
-> **Why this matters (a true story).** Before this pattern, I let a coding agent run **as root** in
-> a container that bind-mounted my home directory. Trying to "fix permissions," it recursively
-> re-owned and rewrote files across the host — including account/login files — and I was **locked
-> out of my own user**, needing a rescue shell and a password/permissions reset to get back in. A
-> root process in a container that shares your host paths *is* root on those paths. Run it as a
-> non-root user matched to your UID and the worst an over-eager agent can do is mess up files you
-> already own — recoverable, never catastrophic.
+> Remember the [Arch Linux incident](#-why-dockeduck-exists--a-true-story) at the top of this
+> README? A root process in a container that shares your host paths *is* root on those paths — that
+> is how an agent ends up rewriting system and login files. Run it as a non-root user matched to
+> your UID and the worst an over-eager agent can do is mess up files you already own — recoverable,
+> never catastrophic.
 
 **Bottom line:** point your cloud agent (or the local MCP coder in 04/05) at a DockeDuck container
 and let it go wild — the blast radius stops at the folder you mounted.
