@@ -1,4 +1,7 @@
-IMAGE_NAME ?= dockduck-torch
+# Built with DockeDuck 🦆 — https://github.com/DimYun/DockDuck
+# Copyright 2026 Dmitrii Iunovidov · Licensed under Apache-2.0 (see LICENSE, NOTICE)
+
+IMAGE_NAME ?= dockeduck-torch
 DATA_DIR   ?= /tmp/data
 
 UID := $(shell id -u)

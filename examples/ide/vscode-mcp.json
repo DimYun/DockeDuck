@@ -1,0 +1,11 @@
+{
+  "//": "VS Code native MCP (Copilot Chat → Agent mode, VS Code ≥ 1.99).",
+  "//1": "Save as .vscode/mcp.json in your project, OR add the 'servers' block to your",
+  "//2": "user settings. Start the DockeDuck server first (make start / make up).",
+  "servers": {
+    "dockeduck-coder": {
+      "type": "sse",
+      "url": "http://localhost:8000/sse"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+name: config_loader
+type: module
+filename: config_loader.py
+language: python
+description: |
+  Config loader module.
+
+  ConfigError(Exception):
+    Raised on missing file, bad JSON/YAML syntax, or schema violation.
+
+  ConfigSchema({'required': ['key1', 'key2', ...]}):
+    Constructed with a dict that must have a 'required' key containing a list of
+    mandatory key names. Example: ConfigSchema({'required': ['host', 'port']}).
+    validate(data: dict) -> None
+      Raises ConfigError if data is missing any key listed in 'required'.
+      Returns None (no exception) if all required keys are present.
+
+  ConfigLoader:
+    load_from_file(path: str) -> dict
+      Parses a .json, .yaml, or .yml file and returns its contents as a dict.
+      Raises ConfigError if the file does not exist or cannot be parsed.
+    load_from_env(prefix: str) -> dict
+      Reads all environment variables whose name starts with prefix.
+      Returns a dict with the prefix stripped from each key.
+      Example: prefix='APP_', env has APP_HOST=localhost -> {'HOST': 'localhost'}.
+
+  Module-level functions:
+    load_config(path: str) -> dict
+      Convenience wrapper around ConfigLoader().load_from_file(path).
+    validate_config(data: dict, schema: ConfigSchema) -> None
+      Calls schema.validate(data); raises ConfigError on violation.
+    merge_configs(*configs: dict) -> dict
+      Merges dicts left-to-right; later configs override earlier ones for the same key.
+
+conditions: |
+  load_from_file / load_config:
+  - If given a path to a valid JSON file -> return parsed dict of its contents
+  - If given a path to a file that does not exist -> raise ConfigError
+
+  merge_configs:
+  - If merge_configs({}, {}) -> return {}
+  - If merge_configs({'a': 1}, {'b': 2}) -> return {'a': 1, 'b': 2}
+  - If merge_configs({'a': 1}, {'a': 2}) -> return {'a': 2} (later value wins)
+  - If merge_configs({'a': 1, 'b': 2}, {}) -> return {'a': 1, 'b': 2}
+
+  load_from_env:
+  - If prefix is 'APP_' and environment has APP_HOST=localhost -> return {'HOST': 'localhost'}
+
+  validate_config / ConfigSchema.validate:
+  - If data={'host': 'x', 'port': 80} and schema=ConfigSchema({'required': ['host', 'port']}) -> return None
+  - If data={'host': 'x'} and schema=ConfigSchema({'required': ['host', 'port']}) -> raise ConfigError
+
+# Canonical acceptance tests (ground truth) — every backend is graded against these.
+# tmp_path and monkeypatch are built-in pytest fixtures; pytest is imported by the runner.
+tests: |
+  def test_load_valid_json(tmp_path):
+      import json
+      p = tmp_path / "c.json"
+      p.write_text(json.dumps({'a': 1, 'b': 2}))
+      assert load_config(str(p)) == {'a': 1, 'b': 2}
+
+  def test_load_missing_file_raises():
+      with pytest.raises(ConfigError):
+          load_config('/nonexistent/definitely/missing_98765.json')
+
+  def test_merge_empty():
+      assert merge_configs({}, {}) == {}
+
+  def test_merge_disjoint():
+      assert merge_configs({'a': 1}, {'b': 2}) == {'a': 1, 'b': 2}
+
+  def test_merge_later_wins():
+      assert merge_configs({'a': 1}, {'a': 2}) == {'a': 2}
+
+  def test_merge_with_empty():
+      assert merge_configs({'a': 1, 'b': 2}, {}) == {'a': 1, 'b': 2}
+
+  def test_load_from_env_strips_prefix(monkeypatch):
+      monkeypatch.setenv('APP_HOST', 'localhost')
+      assert ConfigLoader().load_from_env('APP_') == {'HOST': 'localhost'}
+
+  def test_validate_ok():
+      validate_config({'host': 'x', 'port': 80}, ConfigSchema({'required': ['host', 'port']}))
+
+  def test_validate_missing_raises():
+      with pytest.raises(ConfigError):
+          validate_config({'host': 'x'}, ConfigSchema({'required': ['host', 'port']}))

@@ -1,0 +1,14 @@
+# DockeDuck lint config. The experiment/benchmark code deliberately uses compact,
+# aligned one-liners (e.g. `a += x; b += y`) for readability of tight loops, so the
+# multi-statement / short-f-string style rules are disabled. Correctness-oriented
+# rules (undefined names, unused imports/vars) stay on.
+line-length = 120
+
+[lint]
+ignore = [
+    "E701",  # multiple statements on one line (colon) — compact guard clauses
+    "E702",  # multiple statements on one line (semicolon) — aligned counters
+    "E731",  # lambda assignment — used as a local call shorthand
+    "F541",  # f-string without placeholders — harmless, keeps print() calls uniform
+    "E501",  # line length handled by line-length above, don't hard-fail
+]

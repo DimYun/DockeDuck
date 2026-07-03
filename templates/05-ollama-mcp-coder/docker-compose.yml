@@ -1,0 +1,45 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dockeduck-ollama
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  mcp-server:
+    build:
+      context: .
+      args:
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
+    image: dockeduck-ollama-mcp
+    container_name: dockeduck-ollama-mcp
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    ports:
+      - "${MCP_PORT:-8000}:8000"
+    volumes:
+      - mcp_workspace:/tmp/mcp_workspace
+
+volumes:
+  ollama_data:
+  mcp_workspace:

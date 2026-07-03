@@ -1,0 +1,114 @@
+name: project_scaffolder
+type: project
+filename: project_scaffolder.py
+language: python
+description: |
+  A Python utility that scaffolds Docker project templates.
+
+  Dataclass:
+    TemplateConfig(name: str, base_image: str, port: int, package_manager: str)
+      - from_yaml(yaml_str: str) -> TemplateConfig  (classmethod; port must be int)
+
+  Class:
+    ProjectScaffolder
+      - register_template(config: TemplateConfig) -> None  (overwrites on duplicate name)
+      - list_templates() -> list[str]  (sorted alphabetically)
+      - get_template(name: str) -> TemplateConfig  (raises KeyError if not found)
+      - generate_dockerfile(config: TemplateConfig) -> str
+          must contain the line "FROM <config.base_image>" and "EXPOSE <config.port>"
+          e.g. for base_image="python:3.11" and port=8080:
+               the string must contain "FROM python:3.11" and "EXPOSE 8080"
+      - generate_makefile(config: TemplateConfig) -> str
+          must contain a "build" target
+          must contain "IMAGE_NAME ?= dockeduck-<config.name>"
+          e.g. for name="myapp": must contain "IMAGE_NAME ?= dockeduck-myapp"
+      - scaffold(name: str, output_dir: str) -> None
+          writes Dockerfile and Makefile into output_dir; creates output_dir if missing
+
+conditions: |
+  - If TemplateConfig.from_yaml() is given valid YAML -> return TemplateConfig with correct fields
+  - If TemplateConfig.from_yaml() parses port -> port must be int, not string
+  - If new ProjectScaffolder is created -> list_templates() returns []
+  - If register_template() is called with a new template -> it appears in list_templates()
+  - If register_template() is called twice with the same name -> last registration wins (overwrite)
+  - If list_templates() is called with multiple templates -> return sorted list of names
+  - If get_template() is called with a registered name -> return the TemplateConfig
+  - If get_template() is called with an unknown name -> raise KeyError
+  - If generate_dockerfile(config) is called with config.base_image="python:3.11" -> output contains "FROM python:3.11"
+  - If generate_dockerfile(config) is called with config.port=8080 -> output contains "EXPOSE 8080"
+  - If generate_makefile(config) is called -> output contains a "build" target
+  - If generate_makefile(config) is called with config.name="myapp" -> output contains "IMAGE_NAME ?= dockeduck-myapp"
+  - If scaffold() is called with a valid template and non-existent output_dir -> create the dir and write files
+  - If scaffold() is called with unknown template name -> raise KeyError
+
+# Canonical acceptance tests (ground truth) — every backend is graded against these.
+# tmp_path is a built-in pytest fixture; pytest is imported by the runner.
+tests: |
+  YAML = "name: myapp\nbase_image: python:3.11\nport: 8080\npackage_manager: pip\n"
+
+  def _cfg(name='myapp', base='python:3.11', port=8080, pm='pip'):
+      return TemplateConfig(name, base, port, pm)
+
+  def test_from_yaml_fields():
+      c = TemplateConfig.from_yaml(YAML)
+      assert c.name == 'myapp'
+      assert c.base_image == 'python:3.11'
+      assert c.port == 8080
+      assert c.package_manager == 'pip'
+
+  def test_from_yaml_port_is_int():
+      assert isinstance(TemplateConfig.from_yaml(YAML).port, int)
+
+  def test_new_scaffolder_empty():
+      assert ProjectScaffolder().list_templates() == []
+
+  def test_register_appears():
+      s = ProjectScaffolder()
+      s.register_template(_cfg())
+      assert 'myapp' in s.list_templates()
+
+  def test_register_overwrite_wins():
+      s = ProjectScaffolder()
+      s.register_template(_cfg())
+      s.register_template(_cfg(base='node:20', port=3000, pm='npm'))
+      assert s.list_templates().count('myapp') == 1
+      assert s.get_template('myapp').base_image == 'node:20'
+
+  def test_list_sorted():
+      s = ProjectScaffolder()
+      for n in ['charlie', 'alpha', 'bravo']:
+          s.register_template(_cfg(name=n))
+      assert s.list_templates() == ['alpha', 'bravo', 'charlie']
+
+  def test_get_known():
+      s = ProjectScaffolder()
+      s.register_template(_cfg())
+      assert s.get_template('myapp').name == 'myapp'
+
+  def test_get_unknown_raises():
+      with pytest.raises(KeyError):
+          ProjectScaffolder().get_template('nope')
+
+  def test_dockerfile_from_line():
+      assert 'FROM python:3.11' in ProjectScaffolder().generate_dockerfile(_cfg())
+
+  def test_dockerfile_expose_line():
+      assert 'EXPOSE 8080' in ProjectScaffolder().generate_dockerfile(_cfg())
+
+  def test_makefile_build_target():
+      assert 'build' in ProjectScaffolder().generate_makefile(_cfg())
+
+  def test_makefile_image_name():
+      assert 'IMAGE_NAME ?= dockeduck-myapp' in ProjectScaffolder().generate_makefile(_cfg())
+
+  def test_scaffold_writes_files(tmp_path):
+      s = ProjectScaffolder()
+      s.register_template(_cfg())
+      out = tmp_path / "gen"
+      s.scaffold('myapp', str(out))
+      assert (out / 'Dockerfile').exists()
+      assert (out / 'Makefile').exists()
+
+  def test_scaffold_unknown_raises(tmp_path):
+      with pytest.raises(KeyError):
+          ProjectScaffolder().scaffold('nope', str(tmp_path / "x"))
