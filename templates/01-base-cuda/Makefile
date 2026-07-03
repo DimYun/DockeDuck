@@ -1,5 +1,5 @@
 # ── config ──────────────────────────────────────────────────────
-IMAGE_NAME     ?= dockduck-base
+IMAGE_NAME     ?= dockeduck-base
 TAG            ?= latest
 PKG_MANAGER    ?= uv          # uv | pip | conda
 PYTHON_VERSION ?= 3.11.8

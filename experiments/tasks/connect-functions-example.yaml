@@ -1,0 +1,103 @@
+name: file_search
+type: connected functions
+filename: file_search.py
+language: python
+description: |
+  Three chained functions for opening, reading, and searching a text file.
+
+  open_file(path: str) -> IO
+    Opens the file at path for text reading.
+    Raises ValueError if path is empty string.
+    Raises FileNotFoundError if the file does not exist.
+    Raises PermissionError if the caller lacks read access.
+    Returns the open file object on success.
+
+  read_lines(f: IO) -> list[str]
+    Reads all lines from an open file object, splits every line on whitespace,
+    and returns a single flat list of all words across all lines.
+    Returns [] if the file is empty.
+
+  find_match(words: list[str], target: str) -> list
+    Searches words left-to-right for an exact match of target.
+    Returns [index, target] on the first exact match.
+    Raises ValueError if words is empty.
+    Raises ValueError if target is not found (partial matches do not count).
+
+conditions: |
+  open_file:
+  - If path is empty string -> raise ValueError
+  - If file does not exist -> raise FileNotFoundError
+  - If path is valid and readable -> return an open file object
+
+  read_lines:
+  - If file is completely empty -> return []
+  - If file has one line "hello world" -> return ['hello', 'world']
+  - If file has two lines "foo bar" and "baz" -> return ['foo', 'bar', 'baz']
+
+  find_match:
+  - If words is [] -> raise ValueError
+  - If target is not in words -> raise ValueError
+  - If find_match(['apple', 'banana', 'cherry'], 'apple') -> return [0, 'apple']
+  - If find_match(['apple', 'banana', 'cherry'], 'banana') -> return [1, 'banana']
+  - If find_match(['catalog', 'category'], 'cat') -> raise ValueError (no partial match)
+  - If find_match(['x', 'y', 'x'], 'x') -> return [0, 'x'] (first match)
+
+# Canonical acceptance tests (ground truth) — every backend is graded against these.
+# tmp_path is a built-in pytest fixture; pytest is imported by the runner.
+tests: |
+  def test_open_empty_path_raises():
+      with pytest.raises(ValueError):
+          open_file('')
+
+  def test_open_missing_raises():
+      with pytest.raises(FileNotFoundError):
+          open_file('/nonexistent/definitely/missing_zzz_12345.txt')
+
+  def test_open_valid_returns_file(tmp_path):
+      p = tmp_path / "a.txt"
+      p.write_text("hello")
+      f = open_file(str(p))
+      assert hasattr(f, 'read')
+      f.close()
+
+  def test_read_empty(tmp_path):
+      p = tmp_path / "e.txt"
+      p.write_text("")
+      f = open_file(str(p))
+      assert read_lines(f) == []
+      f.close()
+
+  def test_read_one_line(tmp_path):
+      p = tmp_path / "one.txt"
+      p.write_text("hello world")
+      f = open_file(str(p))
+      assert read_lines(f) == ['hello', 'world']
+      f.close()
+
+  def test_read_two_lines(tmp_path):
+      p = tmp_path / "two.txt"
+      p.write_text("foo bar\nbaz")
+      f = open_file(str(p))
+      assert read_lines(f) == ['foo', 'bar', 'baz']
+      f.close()
+
+  def test_find_empty_raises():
+      with pytest.raises(ValueError):
+          find_match([], 'x')
+
+  def test_find_absent_raises():
+      with pytest.raises(ValueError):
+          find_match(['apple', 'banana'], 'zzz')
+
+  def test_find_first():
+      assert find_match(['apple', 'banana', 'cherry'], 'apple') == [0, 'apple']
+
+  def test_find_second():
+      assert find_match(['apple', 'banana', 'cherry'], 'banana') == [1, 'banana']
+
+  def test_find_no_partial_match():
+      with pytest.raises(ValueError):
+          find_match(['catalog', 'category'], 'cat')
+
+  def test_find_first_of_duplicates():
+      assert find_match(['x', 'y', 'x'], 'x') == [0, 'x']

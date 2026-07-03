@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 from mcp.server.fastmcp import FastMCP
 
+from .hardware import context_for, detect_hardware, recommend_model as _recommend_model
 from .prompts import conditions_to_tests_prompt, file_prompt, fix_prompt, test_prompt
 from .validator import CodeValidator
 from .vlm import CoderClient
@@ -13,7 +14,7 @@ _transport = os.getenv("MCP_TRANSPORT", "sse")
 _workspace = Path(os.getenv("MCP_WORKSPACE", "/tmp/mcp_workspace"))
 
 mcp       = FastMCP(
-    "dockduck-qwen-coder",
+    "dockeduck-ollama-coder",
     host="0.0.0.0" if _transport == "sse" else "127.0.0.1",
     port=_port,
 )
@@ -52,7 +53,7 @@ async def write_input_file(
       3. Call this tool — it saves the spec and returns the YAML content.
       4. Pass the returned YAML to write_and_fix to generate and validate the code.
 
-    For bare IDE use: write this file manually (see experiments/tasks/lru_cache.yaml
+    For bare IDE use: write this file manually (see experiments/tasks/class-example.yaml
     as a template), then call write_and_fix directly.
 
     name        — short identifier used as the filename stem, e.g. "lru_cache"
@@ -246,6 +247,85 @@ async def validate_output_file(
 
     report.append(f"# confidence: {confidence}%")
     return "\n".join(report)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tool 4 — recommend_model  (Haiku proposes the best model for the user's GPU/CPU)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def recommend_model(prefer: str = "quality", apply: bool = False) -> str:
+    """Detect this machine (GPU or CPU/RAM) and recommend the best Ollama model to run here.
+
+    Numbers come from the DockeDuck 6 GB benchmark (experiments/RESULTS.md) plus KV-cache
+    math. Ollama runs on CPU too, so a recommendation is always returned.
+
+    prefer — 'quality' (default) · 'context' (largest window) · 'speed' (smallest model).
+    apply  — if true, switch the live client to the recommended model + context immediately
+             (Ollama loads models on demand and honours per-request num_ctx — no restart).
+             Persist it by also setting OLLAMA_MODEL / OLLAMA_NUM_CTX in .env.
+
+    Returns the recommended tag, the context that fits, and how to apply it.
+    """
+    rec = _recommend_model(prefer=prefer)
+    hw = rec["hw"]
+    where = f"{hw['name']} ({hw['vram_gb']} GB VRAM)" if hw["gpu"] else f"CPU ({hw['ram_gb']} GB RAM)"
+    if not rec.get("tag"):
+        return f"# Hardware: {where}\n\n{rec['reason']}"
+    applied = ""
+    if apply:
+        coder.model = rec["tag"]
+        coder.num_ctx = rec["recommended_context"]
+        applied = (f"\n\n# APPLIED to the running server: model={coder.model}, "
+                   f"num_ctx={coder.num_ctx}. Ollama pulls the model on first use.")
+    thinking = "  (set ENABLE_THINKING=true for +quality)" if rec["thinking"] else ""
+    return (
+        f"# Recommended model for {where}\n\n"
+        f"OLLAMA_MODEL={rec['tag']}\n"
+        f"OLLAMA_NUM_CTX={rec['recommended_context']}\n\n"
+        f"Expected quality : {rec['quality']}% local · {rec['rescue']} tasks pass with one rescue{thinking}\n"
+        f"Why              : {rec['note']}\n"
+        f"How to apply     : set the two lines above in templates/05-ollama-mcp-coder/.env "
+        f"(or call again with apply=true to switch the live server now).{applied}"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tool 5 — recommend_context_window  (Haiku picks the largest context that fits)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def recommend_context_window(model: str = "", apply: bool = False) -> str:
+    """Recommend the largest num_ctx that fits the detected GPU/CPU for a model (defaults to
+    the current OLLAMA_MODEL). With apply=true, set it on the live client immediately.
+    """
+    from .hardware import MODELS
+    hw = detect_hardware()
+    target = model.strip() or coder.model
+    spec = next((m for m in MODELS if m["tag"] == target), None)
+    where = f"{hw['name']} ({hw['vram_gb']} GB)" if hw["gpu"] else f"CPU ({hw['ram_gb']} GB RAM)"
+    if spec is None:
+        return (f"# Hardware: {where}\n\nUnknown model '{target}'. Known: "
+                + ", ".join(m['tag'] for m in MODELS)
+                + ".\nUse recommend_model to pick one, or pass model=<ollama tag>.")
+    mem = hw["vram_gb"] if hw["gpu"] else hw["ram_gb"]
+    ctx = context_for(spec, mem)
+    if ctx < 2048:
+        return (f"# {target} does not fit {where} with a usable context. "
+                f"Try recommend_model(prefer='speed').")
+    applied = ""
+    if apply:
+        coder.num_ctx = ctx
+        applied = f"\n\n# APPLIED: the running server now uses num_ctx={ctx}."
+    return (
+        f"# Context window for {target} on {where}\n\n"
+        f"OLLAMA_NUM_CTX={ctx}\n\n"
+        f"Basis : {spec['kv_heads']} KV heads × {spec['layers']} layers "
+        f"(~{2 * spec['layers'] * spec['kv_heads'] * spec['head_dim'] * 2 // 1024} KB/token), "
+        f"capped at {spec['rope_max']}.\n"
+        f"Apply : set OLLAMA_NUM_CTX in .env, or call with apply=true. Keep MAX_TOKENS below "
+        f"num_ctx (raise both for thinking models).{applied}"
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

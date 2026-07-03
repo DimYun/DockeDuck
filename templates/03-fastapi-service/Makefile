@@ -1,4 +1,4 @@
-IMAGE_NAME ?= dockduck-api
+IMAGE_NAME ?= dockeduck-api
 UID := $(shell id -u)
 GID := $(shell id -g)
 

@@ -7,22 +7,46 @@ on:
     branches: [ main, dev ]
 
 jobs:
-  test-templates:
+  unit-tests:
+    name: Unit tests (templates + experiments)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Test Dependencies
-        run: pip install pytest
+      - name: Install test dependencies
+        # httpx + pyyaml are needed to import experiments/bench_real.py at collection
+        # time; anthropic is imported lazily inside the cloud backends, so it is not
+        # required for the no-network unit tests.
+        run: pip install pytest pyyaml httpx
 
-      - name: Run Template Tests
-        run: pytest tests/test_templates.py -v
+      - name: Run tests
+        run: pytest tests/ -v
+
+  lint:
+    name: Ruff lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install ruff
+      - run: ruff check templates/ experiments/ tests/
+
+  compose-validate:
+    name: Validate 05-ollama docker-compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose config
+        working-directory: templates/05-ollama-mcp-coder
+        run: |
+          cp .env.example .env
+          docker compose config -q
+          echo "docker-compose.yml is valid"

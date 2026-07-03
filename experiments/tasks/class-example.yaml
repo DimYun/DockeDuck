@@ -1,0 +1,62 @@
+name: lru_cache
+type: class
+filename: lru_cache.py
+language: python
+description: |
+  LRU Cache with get(key) and put(key, value) methods, O(1) time using OrderedDict.
+  get(key) → returns value, or -1 if key not present.
+  put(key, value) → inserts or updates; evicts least-recently-used entry when at capacity.
+  Constructor: LRUCache(capacity: int).
+
+conditions: |
+  If the requested key exists in the cache (get) -> output its value and mark it as the most recently used (MRU) item.
+  If the requested key does not exist in the cache (get) -> output -1.
+  If the key already exists (put) -> output an updated value for that key and refresh its status to most recently used (MRU) without evicting any elements.
+  If the key is new and the cache is under capacity (put) -> output the new key-value pair inserted at the most recently used (MRU) position.
+  If the key is new and the cache is at capacity (put) -> output the eviction of the least recently used (LRU) item, then insert the new key-value pair as the most recently used (MRU) item.
+
+# Canonical acceptance tests (ground truth) — every backend is graded against these.
+tests: |
+  def test_get_missing_returns_minus1():
+      c = LRUCache(2)
+      assert c.get(1) == -1
+
+  def test_put_then_get():
+      c = LRUCache(2)
+      c.put(1, 10)
+      assert c.get(1) == 10
+
+  def test_update_existing_value():
+      c = LRUCache(2)
+      c.put(1, 10)
+      c.put(1, 20)
+      assert c.get(1) == 20
+
+  def test_evicts_least_recently_used():
+      c = LRUCache(2)
+      c.put(1, 1)
+      c.put(2, 2)
+      c.put(3, 3)          # capacity 2 -> evicts key 1 (LRU)
+      assert c.get(1) == -1
+      assert c.get(2) == 2
+      assert c.get(3) == 3
+
+  def test_get_refreshes_recency():
+      c = LRUCache(2)
+      c.put(1, 1)
+      c.put(2, 2)
+      assert c.get(1) == 1  # 1 becomes MRU, so 2 is now LRU
+      c.put(3, 3)           # evicts 2
+      assert c.get(2) == -1
+      assert c.get(1) == 1
+      assert c.get(3) == 3
+
+  def test_update_refreshes_recency():
+      c = LRUCache(2)
+      c.put(1, 1)
+      c.put(2, 2)
+      c.put(1, 100)         # updating 1 makes it MRU, 2 is LRU
+      c.put(3, 3)           # evicts 2
+      assert c.get(2) == -1
+      assert c.get(1) == 100
+      assert c.get(3) == 3

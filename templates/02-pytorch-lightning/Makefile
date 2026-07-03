@@ -1,4 +1,4 @@
-IMAGE_NAME ?= dockduck-torch
+IMAGE_NAME ?= dockeduck-torch
 DATA_DIR   ?= /tmp/data
 
 UID := $(shell id -u)

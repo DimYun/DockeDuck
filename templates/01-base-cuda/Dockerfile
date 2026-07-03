@@ -29,7 +29,7 @@ RUN apt-get update -y && apt-get upgrade -y && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 2. Configure non-root user and /opt directory isolation
-ENV OPT_DIR="/opt/dockduck"
+ENV OPT_DIR="/opt/dockeduck"
 ENV PYENV_ROOT="${OPT_DIR}/pyenv"
 ENV CONDA_DIR="${OPT_DIR}/conda"
 ENV VENV_DIR="${OPT_DIR}/python_venv/initial_venv"

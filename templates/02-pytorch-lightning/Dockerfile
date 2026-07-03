@@ -1,5 +1,5 @@
 # Inherit from template 01-base-cuda
-FROM dockduck-base:latest AS trainer
+FROM dockeduck-base:latest AS trainer
 
 # dev tools only in this stage
 USER root

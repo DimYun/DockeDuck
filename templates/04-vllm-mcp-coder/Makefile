@@ -1,5 +1,5 @@
-IMAGE_NAME     ?= dockduck-mcp-coder
-CONTAINER_NAME ?= dockduck-mcp-coder
+IMAGE_NAME     ?= dockeduck-mcp-coder
+CONTAINER_NAME ?= dockeduck-mcp-coder
 MCP_PORT       ?= 8000
 HF_CACHE       ?= $(HOME)/.cache/huggingface
 UID            := $(shell id -u)
@@ -51,4 +51,4 @@ clean: ## Remove the Docker image
 	docker rmi $(IMAGE_NAME) || true
 
 claude-config: ## Print MCP config snippet to paste into claude_desktop_config.json
-	@printf '{\n  "mcpServers": {\n    "qwen-coder": {\n      "url": "http://localhost:%s/sse"\n    }\n  }\n}\n' "$(MCP_PORT)"
+	@printf '{\n  "mcpServers": {\n    "dockeduck-vllm-coder": {\n      "url": "http://localhost:%s/sse"\n    }\n  }\n}\n' "$(MCP_PORT)"
