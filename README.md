@@ -166,7 +166,11 @@ See [`experiments/prompts/mcp_user_prompt.md`](experiments/prompts/mcp_user_prom
 | `write_and_fix` | Generates code from a spec and fixes it until all acceptance tests pass (runs offline) |
 | `validate_output_file` | Runs spec tests against existing code — for manual verification or CI |
 
-**Bare IDE use** (no cloud LLM): write the spec YAML yourself (see `experiments/tasks/class-example.yaml`), then call `write_and_fix` directly.
+**IDE use (PyCharm / VS Code):** connect your IDE's AI assistant to the MCP endpoint
+(`http://localhost:8000/sse`), or skip the AI entirely and run a spec through the server with
+[`examples/ide/dockeduck_call.py`](examples/ide/dockeduck_call.py). Full step-by-step (JetBrains AI
+Assistant, Continue, VS Code native MCP, and direct Run Configurations) with ready config files:
+**[`docs/ide-setup.md`](docs/ide-setup.md)** · quick snippets: `make ide-config`.
 
 ---
 

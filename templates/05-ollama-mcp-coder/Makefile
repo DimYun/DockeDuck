@@ -42,3 +42,11 @@ clean: ## Remove images and named volumes
 
 claude-config: ## Print the MCP config snippet to add to claude_desktop_config.json
 	@printf '{\n  "mcpServers": {\n    "dockeduck-ollama-coder": {\n      "url": "http://localhost:%s/sse"\n    }\n  }\n}\n' "$(MCP_PORT)"
+
+ide-config: ## Print IDE (PyCharm / VS Code) connection info + config snippets
+	@printf '\nDockeDuck MCP endpoint (SSE):  http://localhost:%s/sse\n\n' "$(MCP_PORT)"
+	@printf 'VS Code   -> .vscode/mcp.json :\n  { "servers": { "dockeduck-coder": { "type": "sse", "url": "http://localhost:%s/sse" } } }\n\n' "$(MCP_PORT)"
+	@printf 'PyCharm   -> Settings > Tools > AI Assistant > MCP > Add > SSE > URL above\n'
+	@printf 'Continue  -> merge examples/ide/continue-config.yaml into ~/.continue/config.yaml\n'
+	@printf 'No AI     -> python examples/ide/dockeduck_call.py <spec.yaml>   (pip install mcp)\n\n'
+	@printf 'Full guide: docs/ide-setup.md\n'

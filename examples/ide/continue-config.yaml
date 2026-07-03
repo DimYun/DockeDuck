@@ -1,0 +1,18 @@
+# Continue plugin config — works in BOTH PyCharm/IntelliJ and VS Code.
+# Merge the `mcpServers` block into your existing Continue config:
+#   PyCharm/IntelliJ : ~/.continue/config.yaml   (or the Continue side-panel → gear → Open config)
+#   VS Code          : ~/.continue/config.yaml
+# Start the DockeDuck server first (make start / make up), then reload Continue.
+name: DockeDuck
+version: 0.0.1
+schema: v1
+
+mcpServers:
+  - name: DockeDuck Coder
+    type: sse
+    url: http://localhost:8000/sse
+
+# After reloading, in the Continue chat (Agent mode) the tools appear as:
+#   write_and_fix · write_input_file · validate_output_file
+#   recommend_model · recommend_context_window
+# Try:  "Call recommend_model to pick the best model for my GPU."
